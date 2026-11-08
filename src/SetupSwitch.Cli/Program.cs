@@ -15,7 +15,8 @@ const string Usage = """
       SetupSwitchCli replicar             Replica a imagem em todas as telas
       SetupSwitchCli resolucao <tela> <largura> <altura> [Hz]
       SetupSwitchCli modos <tela>         Lista resoluções e taxas (só telas ligadas)
-      SetupSwitchCli audio listar            Mostra saídas e entradas de áudio
+      SetupSwitchCli audio listar [todos]    Mostra saídas e entradas (todos: inclui as já desconectadas)
+      SetupSwitchCli audio volume <nome> [0-100]  Mostra ou muda o volume
       SetupSwitchCli audio saida <nome>      Define a saída padrão
       SetupSwitchCli audio entrada <nome>    Define a entrada padrão
       SetupSwitchCli restaurar            Volta para a configuração anterior

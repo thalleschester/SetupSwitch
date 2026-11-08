@@ -28,6 +28,7 @@ public partial class ProfilesPanel : UserControl
         ApplyButton.Style = TryFindResource("AccentButtonStyle") as Style ?? ApplyButton.Style;
 
         service.AudioChanged += RefreshChoices;
+        service.Warned += message => StatusText.Text = message;
         service.Changed += RefreshChoices;
 
         RefreshList();
@@ -125,7 +126,8 @@ public partial class ProfilesPanel : UserControl
     private void FillDevices(ComboBox box, AudioFlow flow, string selected, string? savedName)
     {
         var choices = new List<Choice> { new(KeepKey, "Não alterar") };
-        choices.AddRange(_service!.GetAudioDevices(flow).Select(d => new Choice(d.Id, _service.NameOf(d))));
+        choices.AddRange(_service!.GetAudioDevices(flow, includeDisconnected: true)
+            .Select(d => new Choice(d.Id, d.IsConnected ? _service.NameOf(d) : $"{_service.NameOf(d)} (desconectado)")));
 
         // Um aparelho desligado continua na lista, para o perfil não perder a escolha.
         if (selected != KeepKey && choices.All(c => c.Key != selected))
@@ -205,6 +207,17 @@ public partial class ProfilesPanel : UserControl
         var capture = _editing is null || RecaptureBox.IsChecked == true;
 
         _service!.Controller.SaveProfile(profile, capture, _editing);
+
+        // O atalho do perfil acompanha o novo nome.
+        var hotkeys = _service.Settings.Hotkeys;
+        if (_editing is not null && _editing != name
+            && hotkeys.Remove(HotkeyManager.ProfileActionId(_editing), out var gesture))
+        {
+            hotkeys[HotkeyManager.ProfileActionId(name)] = gesture;
+            _service.Store.SaveSettings(_service.Settings);
+        }
+
+        _service.NotifyProfilesChanged();
         RefreshList(name);
         LoadEditor(profile);
         StatusText.Text = "Perfil salvo.";
@@ -237,7 +250,7 @@ public partial class ProfilesPanel : UserControl
         }
 
         // Guarda o nome real, sem apelido nem a marca de desconectado.
-        var device = _service!.GetAudioDevices(flow).FirstOrDefault(d => d.Id == key);
+        var device = _service!.GetAudioDevices(flow, includeDisconnected: true).FirstOrDefault(d => d.Id == key);
         var previous = (ProfileList.SelectedItem as ListBoxItem)?.Tag as ProfileInfo;
         var saved = flow == AudioFlow.Output ? previous?.AudioOutputName : previous?.AudioInputName;
         return (key, device?.Name ?? saved);
@@ -264,6 +277,12 @@ public partial class ProfilesPanel : UserControl
         if (answer == MessageBoxResult.Yes)
         {
             _service!.Controller.DeleteProfile(name);
+            if (_service.Settings.Hotkeys.Remove(HotkeyManager.ProfileActionId(name)))
+            {
+                _service.Store.SaveSettings(_service.Settings);
+            }
+
+            _service.NotifyProfilesChanged();
             RefreshList();
             LoadEditor(null);
         }

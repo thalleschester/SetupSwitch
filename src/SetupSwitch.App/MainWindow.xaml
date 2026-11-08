@@ -112,6 +112,7 @@
         </TabItem>
 
         <TabItem Header="Opções">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,12,0,0">
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
@@ -125,10 +126,11 @@
                 <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                     <StackPanel>
                         <TextBlock Text="Atalhos de teclado" Style="{StaticResource SectionTitle}" />
-                        <TextBlock x:Name="HotkeysText" TextWrapping="Wrap" />
+                        <local:HotkeysPanel x:Name="HotkeysTab" />
                     </StackPanel>
                 </Border>
             </StackPanel>
+            </ScrollViewer>
         </TabItem>
     </TabControl>
 </Window>

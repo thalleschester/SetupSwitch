@@ -27,6 +27,8 @@ public sealed class TrayIcon : IDisposable
             ContextMenuStrip = menu,
             Visible = true,
         };
+        service.Warned += message => _icon.ShowBalloonTip(8000, "SetupSwitch", message, Forms.ToolTipIcon.Warning);
+
         _icon.MouseClick += (_, e) =>
         {
             if (e.Button == Forms.MouseButtons.Left)

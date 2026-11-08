@@ -7,16 +7,21 @@ Controle de telas e áudio para Windows 11. Troque com um clique (ou um atalho) 
 ## Recursos
 
 - **Telas:** somente uma tela, estender para todas ou qualquer combinação; organizar arrastando, com resolução, taxa, orientação e tela principal.
-- **Áudio:** saída e entrada padrão do Windows, com apelidos, favoritos e lista atualizada sozinha ao conectar um aparelho.
-- **Perfis:** combinações de telas, saída e entrada; cada item pode ficar em "Não alterar".
+- **Áudio:** saída e entrada padrão do Windows, com volume e mudo por dispositivo, apelidos, favoritos e lista atualizada sozinha ao conectar um aparelho.
+- **Dispositivos já conectados antes:** aparelhos desligados continuam na lista e podem entrar em perfis; ao reconectar, o perfil os reconhece pelo nome, mesmo em outra porta USB.
+- **Perfis:** combinações de telas, saída e entrada; cada item pode ficar em "Não alterar". Se faltar um aparelho, o resto é aplicado e um aviso aparece na bandeja.
 - **Segurança:** depois de trocar as telas, pede confirmação e volta sozinho em 15 s se ninguém responder.
-- **Bandeja e atalhos:** fica perto do relógio e responde a atalhos globais.
+- **Bandeja e atalhos:** fica perto do relógio e responde a atalhos globais, personalizáveis em **Opções**, inclusive um para cada perfil.
+
+Atalhos de fábrica:
 
 | Atalho | Ação |
 |---|---|
 | `Ctrl+Alt+1`, `2`, `3`... | Somente aquela tela |
 | `Ctrl+Alt+E` | Estender |
 | `Ctrl+Alt+0` | Desfazer a última troca de telas |
+
+![Aba Áudio](capturas/2-audio.png)
 
 ## Requisitos
 
@@ -36,7 +41,7 @@ Gera `publish/SetupSwitch.exe` (app) e `publish/SetupSwitchCli.exe` (linha de co
 | Projeto | Função |
 |---|---|
 | `SetupSwitch.Core` | Telas, pela API CCD do Windows (`QueryDisplayConfig` / `SetDisplayConfig`), e perfis |
-| `SetupSwitch.Audio` | Áudio, pela Core Audio API |
+| `SetupSwitch.Audio` | Áudio e volume, pela Core Audio API |
 | `SetupSwitch.App` | Interface WPF, bandeja, atalhos e confirmação |
 | `SetupSwitch.Cli` | Comandos de terminal para testes |
 

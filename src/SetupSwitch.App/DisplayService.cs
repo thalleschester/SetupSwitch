@@ -32,6 +32,7 @@ public sealed class DisplayService
             _audioRefresh.Stop();
             _audioRefresh.Start();
         });
+        Audio.VolumeChanged += (id, volume) => dispatcher.BeginInvoke(() => VolumeChanged?.Invoke(id, volume));
         Audio.StartWatching();
     }
 
@@ -47,8 +48,22 @@ public sealed class DisplayService
 
     public event Action<string>? Failed;
 
+    /// <summary>
+    /// Algo deu parcialmente certo. Não usa caixa de mensagem: perfis costumam ser
+    /// aplicados por atalho, com a janela fechada, e uma caixa travaria tudo até ser fechada.
+    /// </summary>
+    public event Action<string>? Warned;
+
     /// <summary>Um dispositivo de áudio entrou, saiu ou o padrão mudou.</summary>
     public event Action? AudioChanged;
+
+    /// <summary>O volume ou o mudo de um dispositivo mudou fora do app.</summary>
+    public event Action<string, AudioVolume>? VolumeChanged;
+
+    /// <summary>Um perfil foi criado, renomeado ou excluído.</summary>
+    public event Action? ProfilesChanged;
+
+    public void NotifyProfilesChanged() => ProfilesChanged?.Invoke();
 
     public void NotifyChanged()
     {
@@ -104,17 +119,66 @@ public sealed class DisplayService
         Store.SaveSettings(Settings);
     }
 
-    /// <summary>Dispositivos conectados, com os favoritos primeiro.</summary>
-    public IReadOnlyList<AudioDevice> GetAudioDevices(AudioFlow flow)
+    /// <summary>Conectados primeiro, depois favoritos, depois por nome.</summary>
+    /// <param name="includeDisconnected">
+    /// Inclui o que já passou pelo PC. O Windows guarda um registro por porta ou driver, então
+    /// os desconectados aparecem um por nome, e não aparecem se o mesmo nome estiver conectado.
+    /// </param>
+    public IReadOnlyList<AudioDevice> GetAudioDevices(AudioFlow flow, bool includeDisconnected = false)
     {
         try
         {
-            return Audio.GetDevices(flow).OrderByDescending(IsFavorite).ToList();
+            var devices = Audio.GetDevices(flow, includeDisconnected);
+            var connected = devices.Where(d => d.IsConnected).ToList();
+            var connectedNames = connected.Select(d => d.Name).ToHashSet();
+
+            var past = devices
+                .Where(d => !d.IsConnected && !connectedNames.Contains(d.Name))
+                .GroupBy(d => d.Name)
+                .Select(group => group
+                    .OrderByDescending(d => IsFavorite(d) || Settings.Aliases.ContainsKey(d.Id))
+                    .First());
+
+            return connected.Concat(past)
+                .OrderByDescending(d => d.IsConnected)
+                .ThenByDescending(IsFavorite)
+                .ThenBy(d => NameOf(d), StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
         }
         catch (AudioException error)
         {
             Failed?.Invoke(error.Message);
             return [];
+        }
+    }
+
+    public AudioVolume? GetVolume(string deviceId)
+    {
+        try
+        {
+            return Audio.GetVolume(deviceId);
+        }
+        catch (AudioException)
+        {
+            return null;
+        }
+    }
+
+    public void SetVolume(string deviceId, float level) => TryAudio(() => Audio.SetVolume(deviceId, level));
+
+    public void SetMute(string deviceId, bool muted) => TryAudio(() => Audio.SetMute(deviceId, muted));
+
+    public void WatchVolumes(IEnumerable<string> deviceIds) => TryAudio(() => Audio.WatchVolumes(deviceIds));
+
+    private void TryAudio(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (AudioException error)
+        {
+            Failed?.Invoke(error.Message);
         }
     }
 
@@ -176,7 +240,7 @@ public sealed class DisplayService
 
         if (problems.Count > 0)
         {
-            Failed?.Invoke($"Perfil {name} aplicado, com ressalvas:\n{string.Join("\n", problems)}");
+            Warned?.Invoke($"Perfil {name} aplicado, com ressalvas:\n{string.Join("\n", problems)}");
         }
 
         // Só áudio não precisa de confirmação: não há risco de ficar sem imagem.
@@ -210,7 +274,12 @@ public sealed class DisplayService
         var attempts = waitForDevice ? AudioWaitAttempts : 1;
         for (var attempt = 0; attempt < attempts; attempt++)
         {
-            if (Audio.GetDevices(flow).FirstOrDefault(d => d.Id == id) is { } device)
+            // O mesmo aparelho ganha outro registro em outra porta USB; o nome continua igual.
+            var connected = Audio.GetDevices(flow);
+            var match = connected.FirstOrDefault(d => d.Id == id)
+                ?? connected.FirstOrDefault(d => name is not null && d.Name == name);
+
+            if (match is { } device)
             {
                 try
                 {
