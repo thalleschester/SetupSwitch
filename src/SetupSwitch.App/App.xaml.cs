@@ -39,7 +39,7 @@ public partial class App : Application
         _service.Failed += message => MessageBox.Show(message, "SetupSwitch", MessageBoxButton.OK, MessageBoxImage.Warning);
 
         _hotkeys = new HotkeyManager(_service);
-        _window = new MainWindow(_service, _hotkeys.Failed);
+        _window = new MainWindow(_service, _hotkeys);
         _tray = new TrayIcon(_service, ShowMainWindow, ExitApplication);
 
         SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;

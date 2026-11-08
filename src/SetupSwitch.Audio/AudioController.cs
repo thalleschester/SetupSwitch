@@ -10,9 +10,12 @@ public enum AudioFlow
     Input,
 }
 
-/// <summary>Um dispositivo de áudio conectado. <see cref="Id"/> é estável entre reinícios.</summary>
+/// <summary>Um dispositivo de áudio. <see cref="Id"/> é estável entre reinícios e reconexões.</summary>
 public sealed record AudioDevice(
-    string Id, string Name, AudioFlow Flow, bool IsDefault, bool IsDefaultCommunication);
+    string Id, string Name, AudioFlow Flow, bool IsDefault, bool IsDefaultCommunication, bool IsConnected = true);
+
+/// <summary>Volume de 0 a 1 e se está no mudo.</summary>
+public sealed record AudioVolume(float Level, bool Muted);
 
 /// <summary>Quem é o padrão em cada função, para poder voltar exatamente ao que era.</summary>
 public sealed record AudioDefaults(string? Console, string? Multimedia, string? Communications);
@@ -48,6 +51,8 @@ public sealed class AudioController : IDisposable
 
     public void Dispose()
     {
+        WatchVolumes([]);
+
         if (_notifications is not null)
         {
             _enumerator.UnregisterEndpointNotificationCallback(_notifications);
@@ -74,12 +79,15 @@ public sealed class AudioController : IDisposable
         }
     }
 
-    /// <summary>Só dispositivos conectados: o Windows guarda muitos registros antigos e repetidos.</summary>
-    public IReadOnlyList<AudioDevice> GetDevices(AudioFlow flow)
+    /// <param name="includeDisconnected">
+    /// Inclui tudo que já foi conectado ao PC. O Windows guarda esses registros, às vezes repetidos.
+    /// </param>
+    public IReadOnlyList<AudioDevice> GetDevices(AudioFlow flow, bool includeDisconnected = false)
     {
         var defaults = GetDefaults(flow);
+        var mask = includeDisconnected ? DeviceStateAll : DeviceStateActive;
 
-        Check("Listar dispositivos", _enumerator.EnumAudioEndpoints(ToDataFlow(flow), DeviceStateActive, out var collection));
+        Check("Listar dispositivos", _enumerator.EnumAudioEndpoints(ToDataFlow(flow), mask, out var collection));
         Check("Listar dispositivos", collection.GetCount(out var count));
 
         var devices = new List<AudioDevice>();
@@ -87,7 +95,9 @@ public sealed class AudioController : IDisposable
         {
             Check("Ler dispositivo", collection.Item(index, out var device));
             Check("Ler dispositivo", device.GetId(out var id));
-            devices.Add(new AudioDevice(id, ReadName(device), flow, id == defaults.Console, id == defaults.Communications));
+            Check("Ler dispositivo", device.GetState(out var state));
+            devices.Add(new AudioDevice(id, ReadName(device), flow, id == defaults.Console, id == defaults.Communications,
+                state == DeviceStateActive));
         }
 
         return devices.OrderBy(d => d.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
@@ -159,17 +169,108 @@ public sealed class AudioController : IDisposable
 
     private static string ReadName(IMMDevice device)
     {
-        Check("Ler nome do dispositivo", device.OpenPropertyStore(StorageRead, out var properties));
-
+        // Registros antigos às vezes não têm nome; isso não deve impedir a listagem.
         var key = FriendlyName;
-        Check("Ler nome do dispositivo", properties.GetValue(ref key, out var value));
+        if (device.OpenPropertyStore(StorageRead, out var properties) != 0
+            || properties.GetValue(ref key, out var value) != 0)
+        {
+            return "Dispositivo sem nome";
+        }
+
         try
         {
-            return Marshal.PtrToStringUni(value.Pointer) ?? "Dispositivo sem nome";
+            return value.Pointer == IntPtr.Zero
+                ? "Dispositivo sem nome"
+                : Marshal.PtrToStringUni(value.Pointer) ?? "Dispositivo sem nome";
         }
         finally
         {
             PropVariantClear(ref value);
+        }
+    }
+
+    /// <summary>
+    /// Marca as mudanças de volume feitas por esta instância, para não reagir a elas mesmas.
+    /// É única por instância: o app precisa enxergar mudanças feitas por outro processo.
+    /// </summary>
+    private readonly Guid _ownContext = Guid.NewGuid();
+
+    private readonly Dictionary<string, (IAudioEndpointVolume Volume, VolumeCallback Callback)> _watched = [];
+
+    /// <summary>O volume ou o mudo de um dispositivo mudou por fora do app, como pelas teclas de volume.</summary>
+    public event Action<string, AudioVolume>? VolumeChanged;
+
+    public AudioVolume GetVolume(string deviceId)
+    {
+        var volume = OpenVolume(deviceId);
+        Check("Ler volume", volume.GetMasterVolumeLevelScalar(out var level));
+        Check("Ler volume", volume.GetMute(out var muted));
+        return new AudioVolume(level, muted);
+    }
+
+    /// <param name="level">De 0 a 1.</param>
+    public void SetVolume(string deviceId, float level)
+    {
+        var context = _ownContext;
+        Check("Mudar volume", OpenVolume(deviceId).SetMasterVolumeLevelScalar(Math.Clamp(level, 0f, 1f), ref context));
+    }
+
+    public void SetMute(string deviceId, bool muted)
+    {
+        var context = _ownContext;
+        Check("Mudar mudo", OpenVolume(deviceId).SetMute(muted, ref context));
+    }
+
+    /// <summary>Acompanha o volume só destes dispositivos; os anteriores deixam de ser acompanhados.</summary>
+    public void WatchVolumes(IEnumerable<string> deviceIds)
+    {
+        var wanted = deviceIds.ToHashSet();
+
+        foreach (var id in _watched.Keys.Where(id => !wanted.Contains(id)).ToList())
+        {
+            var (volume, callback) = _watched[id];
+            volume.UnregisterControlChangeNotify(callback);
+            _watched.Remove(id);
+        }
+
+        foreach (var id in wanted.Where(id => !_watched.ContainsKey(id)))
+        {
+            var volume = OpenVolume(id);
+            var callback = new VolumeCallback(id, this);
+            if (volume.RegisterControlChangeNotify(callback) == 0)
+            {
+                _watched[id] = (volume, callback);
+            }
+        }
+    }
+
+    private IAudioEndpointVolume OpenVolume(string deviceId)
+    {
+        if (_watched.TryGetValue(deviceId, out var watched))
+        {
+            return watched.Volume;
+        }
+
+        Check("Abrir dispositivo", _enumerator.GetDevice(deviceId, out var device));
+
+        var interfaceId = AudioEndpointVolumeId;
+        Check("Abrir controle de volume", device.Activate(ref interfaceId, ClsctxAll, IntPtr.Zero, out var volume));
+        return (IAudioEndpointVolume)volume;
+    }
+
+    private sealed class VolumeCallback(string deviceId, AudioController owner) : IAudioEndpointVolumeCallback
+    {
+        public int OnNotify(IntPtr data)
+        {
+            var context = Marshal.PtrToStructure<Guid>(data);
+            if (context != owner._ownContext)
+            {
+                var muted = Marshal.ReadInt32(data, 16) != 0;
+                var level = BitConverter.Int32BitsToSingle(Marshal.ReadInt32(data, 20));
+                owner.VolumeChanged?.Invoke(deviceId, new AudioVolume(level, muted));
+            }
+
+            return 0;
         }
     }
 

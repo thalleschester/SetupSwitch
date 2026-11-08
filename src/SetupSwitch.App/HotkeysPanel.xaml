@@ -1,0 +1,10 @@
+<UserControl x:Class="SetupSwitch.App.HotkeysPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock TextWrapping="Wrap" Margin="0,0,0,12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                   Text="Clique no campo e pressione a combinação desejada, com Ctrl, Alt ou Windows. Esc cancela e Backspace remove o atalho." />
+        <StackPanel x:Name="Rows" />
+        <TextBlock x:Name="StatusText" Margin="0,8,0,0" TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

@@ -6,6 +6,11 @@ namespace SetupSwitch.Audio.Native;
 internal static class CoreAudioNative
 {
     public const uint DeviceStateActive = 0x1;
+
+    /// <summary>Ativos, desativados, ausentes e desconectados: tudo que já passou pelo PC.</summary>
+    public const uint DeviceStateAll = 0xF;
+
+    public const uint ClsctxAll = 0x17;
     public const uint StorageRead = 0;
 
     public enum DataFlow
@@ -99,13 +104,71 @@ internal static class CoreAudioNative
     public interface IMMDevice
     {
         [PreserveSig]
-        int Activate(ref Guid interfaceId, uint context, IntPtr parameters, out IntPtr result);
+        int Activate(ref Guid interfaceId, uint context, IntPtr parameters,
+            [MarshalAs(UnmanagedType.IUnknown)] out object result);
 
         [PreserveSig]
         int OpenPropertyStore(uint access, out IPropertyStore properties);
 
         [PreserveSig]
         int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id);
+
+        [PreserveSig]
+        int GetState(out uint state);
+    }
+
+    public static readonly Guid AudioEndpointVolumeId = new("5CDF2C82-841E-4546-9722-0CF74078229A");
+
+    /// <remarks>A ordem dos métodos importa: ela define a posição de cada um na tabela COM.</remarks>
+    [ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IAudioEndpointVolume
+    {
+        [PreserveSig]
+        int RegisterControlChangeNotify(IAudioEndpointVolumeCallback callback);
+
+        [PreserveSig]
+        int UnregisterControlChangeNotify(IAudioEndpointVolumeCallback callback);
+
+        [PreserveSig]
+        int GetChannelCount(out uint count);
+
+        [PreserveSig]
+        int SetMasterVolumeLevel(float levelDb, ref Guid context);
+
+        [PreserveSig]
+        int SetMasterVolumeLevelScalar(float level, ref Guid context);
+
+        [PreserveSig]
+        int GetMasterVolumeLevel(out float levelDb);
+
+        [PreserveSig]
+        int GetMasterVolumeLevelScalar(out float level);
+
+        [PreserveSig]
+        int SetChannelVolumeLevel(uint channel, float levelDb, ref Guid context);
+
+        [PreserveSig]
+        int SetChannelVolumeLevelScalar(uint channel, float level, ref Guid context);
+
+        [PreserveSig]
+        int GetChannelVolumeLevel(uint channel, out float levelDb);
+
+        [PreserveSig]
+        int GetChannelVolumeLevelScalar(uint channel, out float level);
+
+        [PreserveSig]
+        int SetMute([MarshalAs(UnmanagedType.Bool)] bool muted, ref Guid context);
+
+        [PreserveSig]
+        int GetMute([MarshalAs(UnmanagedType.Bool)] out bool muted);
+    }
+
+    [ComImport, Guid("657804FA-D6AD-4496-8A60-352752AF4F89"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IAudioEndpointVolumeCallback
+    {
+        /// <param name="data">AUDIO_VOLUME_NOTIFICATION_DATA: contexto (16 bytes), mudo (4) e volume (4).</param>
+        [PreserveSig]
+        int OnNotify(IntPtr data);
     }
 
     [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

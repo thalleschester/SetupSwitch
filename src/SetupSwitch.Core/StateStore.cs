@@ -79,6 +79,9 @@ public sealed class AppSettings
     /// <summary>Apelidos de monitores e dispositivos de áudio, pelo ID de cada um.</summary>
     public Dictionary<string, string> Aliases { get; set; } = [];
 
+    /// <summary>Atalhos escolhidos pelo usuário, pelo ID da ação. Texto vazio desliga o atalho.</summary>
+    public Dictionary<string, string> Hotkeys { get; set; } = [];
+
     /// <summary>Dispositivos de áudio favoritos, pelo ID do Windows.</summary>
     public List<string> AudioFavorites { get; set; } = [];
 }

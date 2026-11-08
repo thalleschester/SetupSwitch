@@ -13,10 +13,13 @@ internal static class AudioCommands
         {
             return values switch
             {
-                ["listar"] => List(audio),
+                ["listar"] => List(audio, false),
+                ["listar", "todos"] => List(audio, true),
+                ["volume", var query] => Volume(audio, query, null),
+                ["volume", var query, var level] => Volume(audio, query, level),
                 ["saida", var query] => Change(audio, AudioFlow.Output, query, testSeconds),
                 ["entrada", var query] => Change(audio, AudioFlow.Input, query, testSeconds),
-                _ => Fail("Uso: audio listar | audio saida <dispositivo> | audio entrada <dispositivo>"),
+                _ => Fail("Uso: audio listar [todos] | audio saida <dispositivo> | audio entrada <dispositivo> | audio volume <dispositivo> [0-100]"),
             };
         }
         catch (AudioException error)
@@ -25,16 +28,37 @@ internal static class AudioCommands
         }
     }
 
-    private static int List(AudioController audio)
+    private static int List(AudioController audio, bool all)
     {
-        Print(audio, AudioFlow.Output);
-        Print(audio, AudioFlow.Input);
+        Print(audio, AudioFlow.Output, all);
+        Print(audio, AudioFlow.Input, all);
+        return 0;
+    }
+
+    /// <summary>Sem nível, só mostra; com nível, muda e confere.</summary>
+    private static int Volume(AudioController audio, string query, string? level)
+    {
+        var device = Find(audio, AudioFlow.Output, query, required: false)
+            ?? Find(audio, AudioFlow.Input, query, required: true)!;
+
+        if (level is not null)
+        {
+            if (!int.TryParse(level, out var percent) || percent is < 0 or > 100)
+            {
+                return Fail("O volume vai de 0 a 100.");
+            }
+
+            audio.SetVolume(device.Id, percent / 100f);
+        }
+
+        var volume = audio.GetVolume(device.Id);
+        Console.WriteLine($"{device.Name}: {Math.Round(volume.Level * 100)}%{(volume.Muted ? " (mudo)" : "")}");
         return 0;
     }
 
     private static int Change(AudioController audio, AudioFlow flow, string query, int? testSeconds)
     {
-        var device = Find(audio, flow, query);
+        var device = Find(audio, flow, query, required: true)!;
         var previous = audio.GetDefaults(flow);
 
         try
@@ -62,7 +86,7 @@ internal static class AudioCommands
         }
     }
 
-    private static AudioDevice Find(AudioController audio, AudioFlow flow, string query)
+    private static AudioDevice? Find(AudioController audio, AudioFlow flow, string query, bool required)
     {
         var devices = audio.GetDevices(flow);
 
@@ -74,6 +98,11 @@ internal static class AudioCommands
         }
 
         var matches = devices.Where(d => d.Name.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (!required && matches.Count == 0)
+        {
+            return null;
+        }
+
         return matches.Count == 1
             ? matches[0]
             : throw new AudioException(matches.Count == 0
@@ -81,15 +110,16 @@ internal static class AudioCommands
                 : $"Mais de um dispositivo com o nome \"{query}\".");
     }
 
-    private static void Print(AudioController audio, AudioFlow flow)
+    private static void Print(AudioController audio, AudioFlow flow, bool all = false)
     {
         Console.WriteLine(flow == AudioFlow.Output ? "Saída:" : "Entrada:");
 
-        var devices = audio.GetDevices(flow);
+        var devices = audio.GetDevices(flow, all);
         for (var i = 0; i < devices.Count; i++)
         {
             var device = devices[i];
-            var marks = (device.IsDefault ? " [padrão]" : "") + (device.IsDefaultCommunication ? " [chamadas]" : "");
+            var marks = (device.IsDefault ? " [padrão]" : "") + (device.IsDefaultCommunication ? " [chamadas]" : "")
+                + (device.IsConnected ? "" : " [desconectado]");
             Console.WriteLine($"  {i + 1}. {device.Name}{marks}");
         }
     }

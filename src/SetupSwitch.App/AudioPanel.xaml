@@ -17,7 +17,12 @@
                     <TextBlock Text="Onde o som do PC vai tocar" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="OutputPanel" />
+                    <StackPanel>
+                        <StackPanel x:Name="OutputPanel" />
+                        <Expander x:Name="OutputHistory" Margin="0,8,0,0">
+                            <StackPanel x:Name="OutputHistoryPanel" Margin="0,8,0,0" />
+                        </Expander>
+                    </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>
@@ -31,7 +36,12 @@
                     <TextBlock Text="Qual microfone o PC vai usar" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="InputPanel" />
+                    <StackPanel>
+                        <StackPanel x:Name="InputPanel" />
+                        <Expander x:Name="InputHistory" Margin="0,8,0,0">
+                            <StackPanel x:Name="InputHistoryPanel" Margin="0,8,0,0" />
+                        </Expander>
+                    </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>

@@ -40,7 +40,7 @@ public partial class MainWindow : Window
     private int _dragStartX;
     private int _dragStartY;
 
-    public MainWindow(DisplayService service, IReadOnlyList<string> failedHotkeys)
+    public MainWindow(DisplayService service, HotkeyManager hotkeys)
     {
         _service = service;
         InitializeComponent();
@@ -49,7 +49,7 @@ public partial class MainWindow : Window
         RotationBox.ItemsSource = Rotations.Select(r => r.Label).ToList();
         ConfirmBox.IsChecked = service.Settings.ConfirmChanges;
         StartupBox.IsChecked = StartupRegistration.IsEnabled;
-        HotkeysText.Text = DescribeHotkeys(failedHotkeys);
+        HotkeysTab.Attach(hotkeys);
 
         AudioTab.Attach(service);
         ProfilesTab.Attach(service);
@@ -570,17 +570,6 @@ public partial class MainWindow : Window
 
     private void OnStartupClicked(object sender, RoutedEventArgs e) =>
         StartupRegistration.Set(StartupBox.IsChecked == true);
-
-    private static string DescribeHotkeys(IReadOnlyList<string> failed)
-    {
-        var text = "Ctrl+Alt+1, 2, 3...  Somente aquela tela\n"
-            + "Ctrl+Alt+E  Estender\n"
-            + "Ctrl+Alt+0  Desfazer a última troca";
-
-        return failed.Count == 0
-            ? text
-            : $"{text}\n\nEm uso por outro programa: {string.Join(", ", failed)}";
-    }
 
     private sealed record ResolutionItem(int Width, int Height)
     {
