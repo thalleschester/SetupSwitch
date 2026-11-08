@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SetupSwitchCli</AssemblyName>
+    <RootNamespace>SetupSwitch.Cli</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SetupSwitch.Core\SetupSwitch.Core.csproj" />
+    <ProjectReference Include="..\SetupSwitch.Audio\SetupSwitch.Audio.csproj" />
+  </ItemGroup>
+
+</Project>

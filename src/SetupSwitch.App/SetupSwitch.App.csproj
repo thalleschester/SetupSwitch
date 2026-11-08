@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>SetupSwitch</AssemblyName>
+    <RootNamespace>SetupSwitch.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>SetupSwitch.ico</ApplicationIcon>
+    <!-- ThemeMode do WPF ainda é marcado como experimental. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SetupSwitch.Core\SetupSwitch.Core.csproj" />
+    <ProjectReference Include="..\SetupSwitch.Audio\SetupSwitch.Audio.csproj" />
+  </ItemGroup>
+
+</Project>

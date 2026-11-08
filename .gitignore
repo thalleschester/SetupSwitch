@@ -1,0 +1,12 @@
+# Saída de compilação
+bin/
+obj/
+
+# Executáveis gerados por publicar.sh
+publish/
+publish-*/
+
+# IDEs
+.vs/
+.vscode/
+*.user

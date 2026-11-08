@@ -1,0 +1,134 @@
+<Window x:Class="SetupSwitch.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SetupSwitch.App"
+        Title="SetupSwitch"
+        Width="1080" Height="760" MinWidth="900" MinHeight="640"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="16" />
+        </Style>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style x:Key="Field" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,10,0,4" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+    </Window.Resources>
+
+    <TabControl Margin="16,12">
+        <TabItem Header="Telas">
+            <Grid Margin="0,12,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="Troca rápida" Style="{StaticResource SectionTitle}" />
+                    <WrapPanel x:Name="QuickPanel" Margin="0,0,0,12" />
+                </StackPanel>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="300" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <DockPanel Margin="0,0,0,8">
+                                <Button DockPanel.Dock="Right" Content="Identificar" Click="OnIdentify" />
+                                <StackPanel>
+                                    <TextBlock Text="Organização" Style="{StaticResource SectionTitle}" Margin="0" />
+                                    <TextBlock x:Name="LayoutHint" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </DockPanel>
+                            <Canvas x:Name="LayoutCanvas" Grid.Row="1" ClipToBounds="True" Background="Transparent"
+                                    SizeChanged="OnCanvasSizeChanged" />
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource Card}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="DetailsPanel">
+                                <TextBlock x:Name="DetailsTitle" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock x:Name="DetailsInfo" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+
+                                <TextBlock Text="Apelido" Style="{StaticResource Field}" />
+                                <TextBox x:Name="AliasBox" LostFocus="OnAliasCommitted" KeyDown="OnAliasKeyDown" />
+
+                                <TextBlock Text="Número da tela" Style="{StaticResource Field}" />
+                                <ComboBox x:Name="NumberBox" SelectionChanged="OnNumberChanged" />
+
+                                <StackPanel x:Name="ActiveOptions">
+                                    <TextBlock Text="Resolução" Style="{StaticResource Field}" />
+                                    <ComboBox x:Name="ResolutionBox" SelectionChanged="OnResolutionChanged" />
+
+                                    <TextBlock Text="Taxa de atualização" Style="{StaticResource Field}" />
+                                    <ComboBox x:Name="RefreshBox" SelectionChanged="OnRefreshChanged" />
+
+                                    <TextBlock Text="Orientação" Style="{StaticResource Field}" />
+                                    <ComboBox x:Name="RotationBox" SelectionChanged="OnRotationChanged" />
+
+                                    <CheckBox x:Name="PrimaryBox" Content="Tela principal" Margin="0,12,0,0" Click="OnPrimaryClicked" />
+                                </StackPanel>
+
+                                <Button x:Name="ToggleButton" Margin="0,16,0,0" HorizontalAlignment="Stretch" Click="OnToggleMonitor" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <DockPanel Grid.Row="2" Margin="0,12,0,0">
+                    <Button x:Name="ApplyButton" DockPanel.Dock="Right" Content="Aplicar alterações" Click="OnApply" />
+                    <Button x:Name="DiscardButton" DockPanel.Dock="Right" Content="Descartar" Margin="0,0,8,0" Click="OnDiscard" />
+                    <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                </DockPanel>
+            </Grid>
+        </TabItem>
+
+        <TabItem Header="Áudio">
+            <local:AudioPanel x:Name="AudioTab" />
+        </TabItem>
+
+        <TabItem Header="Perfis">
+            <local:ProfilesPanel x:Name="ProfilesTab" />
+        </TabItem>
+
+        <TabItem Header="Opções">
+            <StackPanel Margin="0,12,0,0">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Comportamento" Style="{StaticResource SectionTitle}" />
+                        <CheckBox x:Name="ConfirmBox" Content="Pedir confirmação depois de cada troca (volta sozinho em 15 s)" Click="OnConfirmClicked" />
+                        <CheckBox x:Name="StartupBox" Content="Iniciar com o Windows, minimizado na bandeja" Margin="0,8,0,0" Click="OnStartupClicked" />
+                        <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Text="Fechar a janela mantém o programa na bandeja, para os atalhos continuarem funcionando. Para encerrar, use Sair no menu do ícone." />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Atalhos de teclado" Style="{StaticResource SectionTitle}" />
+                        <TextBlock x:Name="HotkeysText" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </TabItem>
+    </TabControl>
+</Window>
